@@ -19,6 +19,7 @@ from thehive4py.models import Alert, AlertArtifact, CustomFieldHelper
 import configparser
 import os
 import dateutil.parser
+from pprint import pprint
 
 
 def getAADToken(clientId, clientSecret, tenantId):
@@ -38,7 +39,7 @@ def getAADToken(clientId, clientSecret, tenantId):
     return aadToken
 
 
-def queryAzureLogAnaytics(aadToken, workspaceId, alertId):
+def queryAzureLogAnalytics(aadToken, workspaceId, alertId):
     headers = {
         'Content-Type': 'application/json',
         'Accept': 'application/json',
@@ -59,12 +60,12 @@ def queryAzureLogAnaytics(aadToken, workspaceId, alertId):
 
 def getSentinelAlertArtifacts(data):
     artifacts = []
-    #every elemnt defines a column element
+    #every element defines a column element
     columns_list = data["tables"][0]["columns"]
     #every element is a list that contains all elements of one specific alerts
     row_list = data["tables"][0]["rows"]
 
-    #dictionary to map columnames to indices in a rowlist
+    #dictionary to map colum names to indices in a rowlist
     column_index = {}
     index = 0
     for c in columns_list:
@@ -160,9 +161,8 @@ def CreateHiveAlertFromSentinel(api, title, description, incidentnumber, severit
     alertIdsStr = ' '.join(map(str, alertIds))
 
     customFields = CustomFieldHelper()
-    customFields.add_number('sentinelIncidentNumber', incidentnumber)
+    customFields.add_integer('sentinelIncidentNumber', incidentnumber)
     customFields.add_string('alertIds', alertIdsStr)
-    customFields.add_string('incidentURL', incidentURL)
 
     customFields = customFields.build()
     alert = Alert(title=title,
@@ -173,7 +173,8 @@ def CreateHiveAlertFromSentinel(api, title, description, incidentnumber, severit
               severity=theHiveSeverity,
               source='Sentinel:'+ source,
               customFields=customFields,
-              sourceRef="Sentinel"+str(incidentnumber),
+              sourceRef="Sentinel "+str(incidentnumber),
+              externalLink=incidentURL,
               artifacts=artifacts)
 
     # Create the Alert
@@ -230,23 +231,26 @@ def main():
 
     aadtoken = getAADToken(clientId, clientSecret, tenantId)
 
-    for incident in data['value']:
-        if incident['properties']['status'] == "New":
-            artifacts = []
-            alertIds = []
-            incidentURL = str(incident_BaseURL + incident['name'])
-            for alertId in incident['properties']['relatedAlertIds']:
-                querydata = queryAzureLogAnaytics(aadtoken, workspaceId, alertId)
-                artifacts = getSentinelAlertArtifacts(querydata)
-                extendedLinks = getSentinelAlertLinks(querydata)
-                alertIds.append(alertId)
-            description = str(incident['properties']['description']) + \
-            "\n\r\n\rLink: " + incidentURL
-            if extendedLinks != "":
-                for link in extendedLinks:
-                    description = description + "\n\rAlertLink: " + str(link)
+    try:
+        for incident in data['value']:
+            if incident['properties']['status'] == "New":
+                artifacts = []
+                alertIds = []
+                incidentURL = str(incident_BaseURL + incident['name'])
+                for alertId in incident['properties']['relatedAlertIds']:
+                    querydata = queryAzureLogAnalytics(aadtoken, workspaceId, alertId)
+                    artifacts = getSentinelAlertArtifacts(querydata)
+                    extendedLinks = getSentinelAlertLinks(querydata)
+                    alertIds.append(alertId)
+                description = str(incident['properties']['description']) + \
+                "\n\r\n\rLink: " + incidentURL
+                if extendedLinks != "":
+                    for link in extendedLinks:
+                        description = description + "\n\rAlertLink: " + str(link)
 
-            CreateHiveAlertFromSentinel(the_hive_api, incident['properties']['title'], description, incident['properties']['caseNumber'], incident['properties']['severity'] , incident['properties']['relatedAlertProductNames'][0], artifacts, alertIds, incidentURL)
+                CreateHiveAlertFromSentinel(the_hive_api, incident['properties']['title'], description, incident['properties']['caseNumber'], incident['properties']['severity'] , incident['properties']['relatedAlertProductNames'][0], artifacts, alertIds, incidentURL)
+    except KeyError:
+        pprint(data)
 
 if __name__ == "__main__":
     logging.basicConfig(

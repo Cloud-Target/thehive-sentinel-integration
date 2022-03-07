@@ -133,7 +133,7 @@ func handleAlert(c *thehive.Capsule) error {
 		switch c.Details.Status {
 		case "Ignored":
 			if conf.IgnoredAlertURL == "" {
-				log.Warn().Msg("NewAlertURL not set in config.yml")
+				log.Warn().Msg("IgnoredAlertURL not set in config.yml")
 				return nil
 			}
 			if err := callURL(conf.IgnoredAlertURL, c); err != nil {
