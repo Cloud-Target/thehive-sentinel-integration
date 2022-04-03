@@ -96,7 +96,10 @@ def getSentinelAlertArtifacts(data):
                         name = artifact.get('Name')
                         aadUserId = artifact.get('AadUserId')
                         if name:
-                            artifacts.append(AlertArtifact(dataType='account', data=artifact['Name'], tlp=3))
+                            if artifact.get('UPNSuffix'):
+                                artifacts.append(AlertArtifact(dataType='account', data=artifact['Name']+"@"+artifact['UPNSuffix'], tlp=3))
+                            else:
+                                artifacts.append(AlertArtifact(dataType='account', data=artifact['Name'], tlp=3))
                         elif aadUserId:
                             artifacts.append(AlertArtifact(dataType='account', data=artifact['AadUserId'], tlp=3))
                         else:
@@ -111,10 +114,9 @@ def getSentinelAlertArtifacts(data):
                             for filehash_artifact in artifact["FileHashes"]:
                                 entities_json.append(filehash_artifact)
                     elif artifact['Type'] == "filehash":
-                        print("\n\nO arquivo tem hashes\n")
                         value = artifact.get('Value')
                         if value:
-                            artifacts.append(AlertArtifact(dataType='hash', data=artifact['Value'], tlp=1))
+                            artifacts.append(AlertArtifact(dataType='hash', data=artifact['Value'], tlp=1, ioc=True))
                         else:
                             logging.info("Unknown filehash entity: " + json.dumps(entities_json, indent=4, sort_keys=True))
                     elif artifact['Type'] == "process":
