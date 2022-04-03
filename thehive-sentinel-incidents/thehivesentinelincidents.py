@@ -76,50 +76,57 @@ def getSentinelAlertArtifacts(data):
         if row[column_index["Entities"]] != "" :
             entities_json = json.loads(row[column_index["Entities"]])
             for artifact in entities_json:
-                if artifact['Type'] == "ip":
-                    address = artifact.get('Address')
-                    if address:
-                        artifacts.append(AlertArtifact(dataType='ip', data=artifact['Address']))
+                try:
+                    if artifact['Type'] == "ip":
+                        address = artifact.get('Address')
+                        if address:
+                            artifacts.append(AlertArtifact(dataType='ip', data=artifact['Address']))
+                        else:
+                            logging.info("Unknown ip entity: " + json.dumps(entities_json, indent=4, sort_keys=True))
+                    elif artifact['Type'] == "host":
+                        hostname = artifact.get('HostName')
+                        azureID = artifact.get('AzureID')
+                        if hostname:
+                            artifacts.append(AlertArtifact(dataType='hostname', data=artifact['HostName'], tlp=3))
+                        elif azureID:
+                            artifacts.append(AlertArtifact(dataType='host', data=artifact['AzureID'], tlp=3))
+                        else:
+                            logging.info("Unknown host entity: " + json.dumps(entities_json, indent=4, sort_keys=True))
+                    elif artifact['Type'] == "account":
+                        name = artifact.get('Name')
+                        aadUserId = artifact.get('AadUserId')
+                        if name:
+                            artifacts.append(AlertArtifact(dataType='account', data=artifact['Name'], tlp=3))
+                        elif aadUserId:
+                            artifacts.append(AlertArtifact(dataType='account', data=artifact['AadUserId'], tlp=3))
+                        else:
+                            logging.info("Unknown account entity: " + json.dumps(entities_json, indent=4, sort_keys=True))
+                    elif artifact['Type'] == "file":
+                        name = artifact.get('Name')
+                        if name:
+                            artifacts.append(AlertArtifact(dataType='filename', data=artifact['Name']))
+                        else:
+                            logging.info("Unknown file entity: " + json.dumps(entities_json, indent=4, sort_keys=True))
+                        if "FileHashes" in artifact.keys():
+                            for filehash_artifact in artifact["FileHashes"]:
+                                entities_json.append(filehash_artifact)
+                    elif artifact['Type'] == "filehash":
+                        print("\n\nO arquivo tem hashes\n")
+                        value = artifact.get('Value')
+                        if value:
+                            artifacts.append(AlertArtifact(dataType='hash', data=artifact['Value'], tlp=1))
+                        else:
+                            logging.info("Unknown filehash entity: " + json.dumps(entities_json, indent=4, sort_keys=True))
+                    elif artifact['Type'] == "process":
+                        commandline = artifact.get('CommandLine')
+                        if commandline:
+                            artifacts.append(AlertArtifact(dataType='filename', data=artifact['CommandLine']))
+                        else:
+                            logging.info("Unknown process entity: " + json.dumps(entities_json, indent=4, sort_keys=True))
                     else:
-                        logging.info("Unknown ip entity: " + json.dumps(entities_json, indent=4, sort_keys=True))
-                elif artifact['Type'] == "host":
-                    hostname = artifact.get('HostName')
-                    azureID = artifact.get('AzureID')
-                    if hostname:
-                        artifacts.append(AlertArtifact(dataType='host', data=artifact['HostName']))
-                    elif azureID:
-                        artifacts.append(AlertArtifact(dataType='host', data=artifact['AzureID']))
-                    else:
-                        logging.info("Unknown host entity: " + json.dumps(entities_json, indent=4, sort_keys=True))
-                elif artifact['Type'] == "account":
-                    name = artifact.get('Name')
-                    aadUserId = artifact.get('AadUserId')
-                    if name:
-                        artifacts.append(AlertArtifact(dataType='account', data=artifact['Name']))
-                    elif aadUserId:
-                        artifacts.append(AlertArtifact(dataType='account', data=artifact['AadUserId']))
-                    else:
-                        logging.info("Unknown account entity: " + json.dumps(entities_json, indent=4, sort_keys=True))
-                elif artifact['Type'] == "file":
-                    name = artifact.get('Name')
-                    if name:
-                        artifacts.append(AlertArtifact(dataType='filename', data=artifact['Name']))
-                    else:
-                        logging.info("Unknown file entity: " + json.dumps(entities_json, indent=4, sort_keys=True))
-                elif artifact['Type'] == "filehash":
-                    value = artifact.get('Value')
-                    if value:
-                        artifacts.append(AlertArtifact(dataType='hash', data=artifact['Value']))
-                    else:
-                        logging.info("Unknown filehash entity: " + json.dumps(entities_json, indent=4, sort_keys=True))
-                elif artifact['Type'] == "process":
-                    commandline = artifact.get('CommandLine')
-                    if commandline:
-                        artifacts.append(AlertArtifact(dataType='filename', data=artifact['CommandLine']))
-                    else:
-                        logging.info("Unknown process entity: " + json.dumps(entities_json, indent=4, sort_keys=True))
-                else:
-                    logging.info("Unknown entity: " + json.dumps(entities_json, indent=4, sort_keys=True))
+                        logging.info("Unknown entity: " + json.dumps(entities_json, indent=4, sort_keys=True))
+                except KeyError:
+                    pass
     return artifacts
 
 
@@ -236,14 +243,16 @@ def main():
             if incident['properties']['status'] == "New":
                 artifacts = []
                 alertIds = []
+                description = ""
                 incidentURL = str(incident_BaseURL + incident['name'])
                 for alertId in incident['properties']['relatedAlertIds']:
                     querydata = queryAzureLogAnalytics(aadtoken, workspaceId, alertId)
                     artifacts = getSentinelAlertArtifacts(querydata)
                     extendedLinks = getSentinelAlertLinks(querydata)
                     alertIds.append(alertId)
-                description = str(incident['properties']['description']) + \
-                "\n\r\n\rLink: " + incidentURL
+                if 'description' in incident['properties'].keys():
+                    description = str(incident['properties']['description']) + "\n\r\n\r"
+                description += "Link: " + incidentURL
                 if extendedLinks != "":
                     for link in extendedLinks:
                         description = description + "\n\rAlertLink: " + str(link)
