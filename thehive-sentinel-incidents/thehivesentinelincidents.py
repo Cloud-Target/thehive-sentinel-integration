@@ -190,7 +190,7 @@ def CreateHiveAlertFromSentinel(api, title, description, incidentnumber, severit
     response = api.create_alert(alert)
     if response.status_code == 201:
         logging.info('Alert created: ' + 'Sentinel' + str(incidentnumber) + ': '+ source + ': ' + title + '. StatusCode: {}/{}'.format(response.status_code, response.text))
-    elif (response.status_code == 400 and response.json()['type'] == "ConflictError"):
+    elif (response.status_code == 400 and response.json()['type'] == "CreateError"):
         logging.info('Duplicate alert: ' +  'Sentinel'+str(incidentnumber) + ': '+ source + ': ' + title + '. StatusCode: {}/{}'.format(response.status_code, response.text))
     else:
         logging.error('failed to create alert: ' + source + ' ' + title + ' Sentinel' +str(incidentnumber) + '. StatusCode: {}/{}'.format(response.status_code, response.text))
