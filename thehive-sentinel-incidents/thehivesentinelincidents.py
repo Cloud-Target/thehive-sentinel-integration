@@ -93,9 +93,12 @@ def getSentinelAlertArtifacts(data):
                         else:
                             logging.info("Unknown host entity: " + json.dumps(entities_json, indent=4, sort_keys=True))
                     elif artifact['Type'] == "account":
+                        principalName = artifact.get('UserPrincipalName')
                         name = artifact.get('Name')
                         aadUserId = artifact.get('AadUserId')
-                        if name:
+                        if principalName:
+                            artifacts.append(AlertArtifact(dataType='account', data=artifact['UserPrincipalName'], tlp=3))
+                        elif name:
                             if artifact.get('UPNSuffix'):
                                 artifacts.append(AlertArtifact(dataType='account', data=artifact['Name']+"@"+artifact['UPNSuffix'], tlp=3))
                             else:
@@ -108,6 +111,8 @@ def getSentinelAlertArtifacts(data):
                         name = artifact.get('Name')
                         if name:
                             artifacts.append(AlertArtifact(dataType='filename', data=artifact['Name']))
+                            if "Directory" in artifact.keys():
+                                artifacts.append(AlertArtifact(dataType='filepath', data=artifact['Directory']+'\\'+artifact['Name']))
                         else:
                             logging.info("Unknown file entity: " + json.dumps(entities_json, indent=4, sort_keys=True))
                         if "FileHashes" in artifact.keys():
@@ -122,9 +127,35 @@ def getSentinelAlertArtifacts(data):
                     elif artifact['Type'] == "process":
                         commandline = artifact.get('CommandLine')
                         if commandline:
-                            artifacts.append(AlertArtifact(dataType='filename', data=artifact['CommandLine']))
+                            artifacts.append(AlertArtifact(dataType='commandLine', data=artifact['CommandLine']))
+                            entities_json.append(artifact['ImageFile'])
+                            if 'ParentProcess' in artifact.keys():
+                                entities_json.append(artifact['ParentProcess'])
                         else:
                             logging.info("Unknown process entity: " + json.dumps(entities_json, indent=4, sort_keys=True))
+                    elif artifact['Type'] == "url":
+                        url = artifact.get('Url')
+                        if url:
+                            artifacts.append(AlertArtifact(dataType='url', data=artifact['Url']))
+                        else:
+                            logging.info("Unknown url entity: " + json.dumps(entities_json, indent=4, sort_keys=True))
+                    elif artifact['Type'] == "mailbox":
+                        mailboxAddress = artifact.get('MailboxPrimaryAddress')
+                        if mailboxAddress:
+                            artifacts.append(AlertArtifact(dataType='account', data=artifact['MailboxPrimaryAddress'], tlp=3))
+                        else:
+                            logging.info("Unknown mailbox entity: " + json.dumps(entities_json, indent=4, sort_keys=True))
+                    elif artifact['Type'] == "mailMessage":
+                        mail_src = artifact.get('P1Sender')
+                        subject = artifact.get('Subject')
+                        if mail_src or subject:
+                            if mail_src:
+                                artifacts.append(AlertArtifact(dataType='mail-src', data=artifact['P1Sender'], tlp=2))
+                                artifacts.append(AlertArtifact(dataType='domain', data=artifact['P1SenderDomain'], tlp=2))
+                            if subject:
+                                artifacts.append(AlertArtifact(dataType='mail-subject', data=artifact['Subject'], tlp=2))
+                        else:
+                            logging.info("Unknown mailMessage entity: " + json.dumps(entities_json, indent=4, sort_keys=True))
                     else:
                         logging.info("Unknown entity: " + json.dumps(entities_json, indent=4, sort_keys=True))
                 except KeyError:
