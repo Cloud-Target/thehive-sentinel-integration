@@ -13,6 +13,18 @@ The app registration (service principle) should have the following permissions o
 - Sentinel Contributor
 - Log Analytics Contributor
 
+## Custom observables
+
+A list of observable types that need to be created on The Hive for the script work correctly .
+
+| **Observable** | **Description** |
+|________________|_________________|
+| `account`      | User account or UPN associated with the incident. |
+| `commandLine`  | Command line of running process that triggered the incident. |
+| `filepath`     | To complement the information of `filename`, this includes the full path to the file. Inspired by the `fullpath` attribute from the `file` MISP object. |
+| `mail-src`     | When the incident contains emails, this contains the sender's address. Inspired by MISP's `email-src` attribute. |
+
+
 ## sentinel.ini
 
 thehive-sentinel-incidents is configured in the file sentinel.ini.
@@ -43,7 +55,7 @@ The API key of a TheHive user with the following permissions:
 
 The URL and port for connecting to TheHive.
 
-### AZure
+### Azure
 
 #### tenantId
 
