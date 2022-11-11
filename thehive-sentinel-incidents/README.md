@@ -18,7 +18,7 @@ The app registration (service principle) should have the following permissions o
 A list of observable types that need to be created on The Hive for the script work correctly .
 
 | **Observable** | **Description** |
-|________________|_________________|
+|----------------|-----------------|
 | `account`      | User account or UPN associated with the incident. |
 | `commandLine`  | Command line of running process that triggered the incident. |
 | `filepath`     | To complement the information of `filename`, this includes the full path to the file. Inspired by the `fullpath` attribute from the `file` MISP object. |
